@@ -42,7 +42,8 @@
 									appear
 								>
 									<div class="total crit red">
-										Crit <b>1</b>
+										Crit 
+										<b><hk-animated-integer :value="1" onMount /></b>
 									</div>
 								</transition>
 								<transition
@@ -52,7 +53,8 @@
 									appear
 								>
 									<div class="total crit green">
-										Crit <b>20</b>
+										Crit 
+										<b><hk-animated-integer :value="20" onMount /></b>
 									</div>
 								</transition>
 								<div
@@ -63,7 +65,7 @@
 										red: hitOrMiss[roll.key] === 'miss'
 									}"
 								>
-									{{ action.toHit.total }}
+									<hk-animated-integer :value="action.toHit.total" onMount />
 								</div>
 							</div>
 							<q-btn-toggle
@@ -152,7 +154,7 @@
 									</q-item-section>
 									<q-item-section avatar :class="action.type === 'healing' ? 'green' : 'red'">
 										<q-item-label>
-											<b>{{ totalActionDamage(action, rolled, roll.key) }}</b>
+											<b><hk-animated-integer :value="totalActionDamage(action, rolled, roll.key)" /></b>
 										</q-item-label>
 										<q-tooltip anchor="top middle" self="center middle">
 												{{ rolled.modifierRoll.roll }}
@@ -166,8 +168,31 @@
 											<b class="green">Crit!</b>
 											{{ !critSettings ? "Rolled dice twice" : "Doubled rolled values"}}
 										</template><br/>
-										{{ rolled.modifierRoll.roll }} = <b>{{ rolled.modifierRoll.total }}</b><br/>
-										{{ rolled.modifierRoll.throws }}
+										{{ rolled.modifierRoll.roll }} =
+										<b>
+											<hk-animated-integer :value="rolled.modifierRoll.total" />
+										</b><br/>
+										<div class="throws">
+											<div 
+												v-for="(Throw, throw_index) in rolled.modifierRoll.throws"
+												:key="`throw-${Throw}-${throw_index}`"
+												class="throw"
+												:class="{
+													red: Throw === 1, green: Throw == rolled.modifierRoll.d,
+													rotate: animateRoll === roll.key+rolled_index+throw_index
+													}"
+												@click="
+													animateRoll = roll.key+rolled_index+throw_index,
+													reroll($event, rolled.modifierRoll, throw_index)
+												"
+												@animationend="animateRoll = undefined"
+											>
+												<hk-animated-integer :value="Throw" onMount/>
+												<q-tooltip anchor="top middle" self="bottom middle">
+													Reroll {{ Throw }}
+												</q-tooltip>
+											</div>
+										</div>
 									</div>
 									<div v-if="rolled.scaledRoll" class="mt-3">
 										Scale ({{ selectedLevel }}): {{ rolled.scaledRoll.roll }} = <b>{{ rolled.scaledRoll.total }}</b><br/>
@@ -195,14 +220,17 @@
 									<hr>
 									<div>
 										<b>Final result:</b><br/>	
-										({{ rolled.modifierRoll.total }}<span v-if="rolled.scaledRoll"> + {{ rolled.scaledRoll.total }}</span>)
+										(<hk-animated-integer :value="rolled.modifierRoll.total" /><span v-if="rolled.scaledRoll"> + 
+										{{ rolled.scaledRoll.total }}</span>)
 										<span v-if="savingThrowResult[roll.key] === 'save' || hitOrMiss[roll.key] === 'miss'"> {{ missSaveEffect(rolled.missSave, 'calc') }}</span>
 										<template v-if="resistances[roll.key]">
 											<span v-if="resistances[roll.key][rolled.damage_type] === 'v'"> * 2</span>
 											<span v-if="resistances[roll.key][rolled.damage_type] === 'r'"> / 2</span>
 											<span v-if="resistances[roll.key][rolled.damage_type] === 'i'"> no effect</span>
 										</template>
-										<span> = <b :class="rolled.damage_type">{{ totalActionDamage(action, rolled, roll.key) }}</b></span>
+										<span> = <b :class="rolled.damage_type">
+											<hk-animated-integer :value="totalActionDamage(action, rolled, roll.key)" />
+										</b></span>
 									</div>
 								</div>
 							</q-expansion-item>
@@ -211,7 +239,7 @@
 						<div class="total-damage">
 							<div>Total {{ action.type === "healing" ? "healing" : "damage" }}</div>
 							<div class="total" :class="action.type === 'healing' ? 'green' : 'red'">
-								{{ totalDamage(roll) }}
+								<hk-animated-integer :value="totalDamage(roll)" onMount />
 							</div>
 						</div>
 					</div>
@@ -224,10 +252,13 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import { damage_types } from '@/mixins/damageTypes.js';
+import { dice } from '@/mixins/dice';
+import hkAnimatedInteger from './hk-animated-integer.vue';
 
 export default {
+  components: { hkAnimatedInteger },
 	name: 'hk-rolls',
-	mixins: [damage_types],
+	mixins: [damage_types, dice],
 	data() {
 		return {
 			defenses: {
@@ -238,6 +269,7 @@ export default {
 			resistances: {},
 			savingThrowResult: {},
 			hitOrMiss: {},
+			animateRoll: undefined,
 			resultColumns: {
 				total: {
 					maxContent: true
@@ -306,6 +338,13 @@ export default {
 			} else {
 				this.$set(this.resistances[key], type, resistance);
 			}
+		},
+		reroll(e, roll, throw_index) {
+			const add = (a, b) => a + b;
+			const newRoll = this.rollD(e, roll.d, 1, 0, `Reroll 1d${roll.d}`);
+			this.$set(roll.throws, throw_index, newRoll.total);
+			this.$set(roll, "throwsTotal", roll.throws.reduce(add));
+			this.$set(roll, "total", roll.throwsTotal + parseInt(roll.mod));
 		},
 		missSaveEffect(effect, type) {
 			if(type === 'text') {
@@ -425,6 +464,28 @@ export default {
 					}
 				}
 			}
+			.throws {
+				display: flex;
+				flex-wrap: wrap;
+				margin-top: 5px;
+
+				.throw {
+					border: solid 1px $gray-hover;
+					padding: 1px 0;
+					width: 23px;
+					text-align: center;
+					margin-right: 2px;
+					cursor: pointer;
+					user-select: none;
+
+					&:hover {
+						border-color: $gray-light;
+					}
+					&.rotate {
+						animation: spin .2s linear;
+					}
+				}
+			}
 		}
 	}
 	.animate__heartBeat {
@@ -433,4 +494,5 @@ export default {
 	.animate__hinge {
 		animation-delay: .5s;
 	}
+	@keyframes spin { 100% { transform: rotate(360deg); } }
 </style>

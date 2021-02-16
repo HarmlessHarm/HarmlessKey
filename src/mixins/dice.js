@@ -76,6 +76,7 @@ export const dice = {
 			const roll = {
 				title,
 				roll: showRoll,
+				d,
 				mod: s + m,
 				throws: throws,
 				throwsTotal: sumThrows,
@@ -223,7 +224,7 @@ export const dice = {
 								mod: fixed_val,
 								throws: [],
 								throwsTotal: 0,
-								total: fixed_val
+								total: parseInt(fixed_val)
 							}
 						}
 					}
@@ -243,7 +244,7 @@ export const dice = {
 							mod: fixed_val,
 							throws: [],
 							throwsTotal: 0,
-							total: fixed_val
+							total: parseInt(fixed_val)
 						}
 					}
 
