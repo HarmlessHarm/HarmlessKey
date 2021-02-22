@@ -210,6 +210,69 @@
 				</template>
 			</q-select>
 		</div>
+		<!-- Special Poison Attack -->
+		<template v-if="roll.poison !== undefined">
+			<div class="row q-col-gutter-md mb-3">
+				<div class="col">
+					<q-select
+						dark filled square
+						emit-value
+						map-options
+						label="Poison Save Ability"
+						:options="abilities"
+						v-model="roll.poison.save_ability"
+						@input="$forceUpdate()"
+					/>
+				</div>
+				<div class="col">
+					<q-input
+						dark filled square
+						type="number"
+						label="Save DC"
+						v-model="roll.poison.save_dc"
+						@input="$forceUpdate()"
+					/>
+				</div>
+			</div>
+			<div class="row q-col-gutter-md mb-3">
+				<div class="col">
+					<q-input 
+						dark filled square
+						label="Dice count"
+						v-model="roll.poison.dice_count"
+						autocomplete="off"
+						name="dice_count"
+						class="mb-2"
+						type="number"
+						@input="$forceUpdate()"
+					/>
+				</div>
+				<div class="col">
+					<!-- MODIFIER SUBTYPE -->
+					<q-select 
+						dark filled square
+						map-options emit-value
+						label="Dice type"
+						:options="dice_type"
+						v-model="roll.poison.dice_type"
+						class="mb-2"
+						@input="$forceUpdate()"
+					/>
+				</div>
+				<div class="col">
+					<!-- MODIFIER FIXED VALUE -->
+					<q-input 
+						dark filled square
+						label="Fixed value"
+						v-model="roll.poison.fixed_val"
+						autocomplete="off"
+						class="mb-2"
+						type="number"
+						@input="$forceUpdate()"
+					/>
+				</div>
+			</div>
+		</template>
 
 		<!-- SPELL SCALING -->
 		<template v-if="spell && spell.scaling !== undefined && spell.scaling !== 'none'">
@@ -313,6 +376,7 @@
 <script>
 import numeral from 'numeral';
 import { damage_types } from '@/mixins/damageTypes.js';
+import { abilities } from '@/mixins/abilities';
 
 export default {
 	name: 'monster-action-modifier',
@@ -328,7 +392,7 @@ export default {
 			default: undefined
 		},
 	},
-	mixins: [damage_types],
+	mixins: [damage_types, abilities],
 	computed: {
 		roll: {
 			get() {
@@ -382,7 +446,8 @@ export default {
 			specials: {
 				siphon_full: { label: "Heal caster full", value: "siphon_full", info: "On a hit, the caster is healed for all of the damage done." },
 				siphon_half: { label: "Heal caster half", value: "siphon_half", info: "On a hit, the caster is healed for half of the damage done." },
-				drain: { label: "Reduce max HP", value: "drain", info: "On a failed save the targets hit point maximum is reduced by an amount equal to the damage done." }
+				drain: { label: "Reduce max HP", value: "drain", info: "On a failed save the targets hit point maximum is reduced by an amount equal to the damage done." },
+				poison: { label: "Poison Save", value: "poison", info: "On hit and a failed save the target suffers additional poison damage" },
 			}
 		};
 	},
@@ -454,6 +519,25 @@ export default {
 				}
 			}
 			return description;
+		},
+	},
+	watch: {
+		roll: {
+			handler(newValue) {
+				//Emits validation on every change
+				if (newValue.special == 'poison') {
+					this.roll.poison = {
+						// 'save_ability': undefined,
+						// 'save_dc': undefined,
+						// 'dice_count': undefined,
+						// 'dice_type': undefined,
+						// 'fixed_val': undefined,
+					};
+				} else {
+					delete this.roll.poison;
+				}
+			},
+			deep: true
 		},
 	}
 };
